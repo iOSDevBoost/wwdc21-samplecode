@@ -23,7 +23,7 @@ private let types: Set<HKSampleType> = [caffeineType]
 // Milligram units.
 private let miligrams = HKUnit.gramUnit(with: .milli)
 
-class HealthKitController {
+actor HealthKitController {
     
     let logger = Logger(subsystem: "com.example.apple-samplecode.Coffee-Tracker.watchkitapp.watchkitextension.HealthKitController",
                         category: "HealthKit")
@@ -162,7 +162,7 @@ class HealthKitController {
             let deletedDrinks = self.drinksToDelete(from: deletedSamples ?? [])
             
             // Update the model.
-            await self.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
+            await model?.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
 
             return true
         } catch {
@@ -240,30 +240,5 @@ class HealthKitController {
         logger.debug("\(uuidsToDelete.count) drinks deleted from HealthKit.")
 
         return Set(uuidsToDelete)
-    }
-    
-    // Update the model.
-    @MainActor
-    private func updateModel(newDrinks: [Drink], deletedDrinks: Set<UUID>) {
-        assert(Thread.main == Thread.current, "Must be run on the main queue because it accesses currentDrinks.")
-        
-        guard !newDrinks.isEmpty && !deletedDrinks.isEmpty else {
-            logger.debug("No drinks to add or delete from HealthKit.")
-            return
-        }
-        
-        // Get a copy of the current drink data.
-        guard let oldDrinks = model?.currentDrinks else { return }
-        
-        // Remove the deleted drinks.
-        var drinks = oldDrinks.filter { deletedDrinks.contains($0.uuid) }
-        
-        // Add the new drinks.
-        drinks += newDrinks
-        
-        // Sort the array by date.
-        drinks.sort { $0.date < $1.date }
-        
-        model?.currentDrinks = drinks
     }
 }

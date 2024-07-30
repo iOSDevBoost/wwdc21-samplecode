@@ -258,6 +258,31 @@ class CoffeeData: ObservableObject {
                    .appendingPathComponent("CoffeeTracker.plist")
         }
     }
+    
+    // Update the model.
+    @MainActor
+    internal func updateModel(newDrinks: [Drink], deletedDrinks: Set<UUID>) {
+        assert(Thread.main == Thread.current, "Must be run on the main queue because it accesses currentDrinks.")
+        
+        guard !newDrinks.isEmpty && !deletedDrinks.isEmpty else {
+            logger.debug("No drinks to add or delete from HealthKit.")
+            return
+        }
+        
+        // Get a copy of the current drink data.
+        let oldDrinks = currentDrinks
+        
+        // Remove the deleted drinks.
+        var drinks = oldDrinks.filter { deletedDrinks.contains($0.uuid) }
+        
+        // Add the new drinks.
+        drinks += newDrinks
+        
+        // Sort the array by date.
+        drinks.sort { $0.date < $1.date }
+        
+        currentDrinks = drinks
+    }
 }
 
 extension Array where Element == Drink {
