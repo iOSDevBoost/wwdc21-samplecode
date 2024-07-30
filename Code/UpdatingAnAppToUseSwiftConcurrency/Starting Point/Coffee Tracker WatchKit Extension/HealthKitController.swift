@@ -121,7 +121,7 @@ class HealthKitController {
         let datePredicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: [.strictStartDate, .strictEndDate])
         
         // Create the query.
-        return await withCheckedThrowingContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             let query = HKAnchoredObjectQuery(
                 type: caffeineType,
                 predicate: datePredicate,
