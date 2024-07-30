@@ -82,20 +82,27 @@ class HealthKitController {
     // MARK: - Public Methods
     
     // Request authorization to read and save the required data types.
+    @available(*, renamed: "requestAuthorization()")
     public func requestAuthorization(completionHandler: @escaping (Bool) -> Void ) {
-        guard isAvailable else { return }
+        Task {
+            let result = await requestAuthorization()
+            completionHandler(result)
+        }
+    }
+    
+    
+    public func requestAuthorization() async -> Bool {
+        guard isAvailable else { return false }
         
-        store.requestAuthorization(toShare: types, read: types) { success, error in
-            
+        do {
+            try await store.__requestAuthorization(toShare: types, read: types)
             // Check for any errors.
-            guard error == nil else {
-                self.logger.error("An error occurred while requesting HealthKit Authorization: \(error!.localizedDescription)")
-                return
-            }
-            
             // Set the authorization property, and call the handler.
-            self.isAuthorized = success
-            completionHandler(success)
+            self.isAuthorized = true
+            return true
+        } catch let error1 {
+            self.logger.error("An error occurred while requesting HealthKit Authorization: \(error1.localizedDescription)")
+            return false
         }
     }
     
