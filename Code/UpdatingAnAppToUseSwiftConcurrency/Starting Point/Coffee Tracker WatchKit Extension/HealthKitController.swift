@@ -83,7 +83,7 @@ actor HealthKitController {
     
     // Request authorization to read and save the required data types.
     @available(*, renamed: "requestAuthorization()")
-    public func requestAuthorization(completionHandler: @escaping (Bool) -> Void ) {
+    nonisolated public func requestAuthorization(completionHandler: @escaping (Bool) -> Void ) {
         Task {
             let result = await requestAuthorization()
             completionHandler(result)
@@ -108,7 +108,7 @@ actor HealthKitController {
     
     // Reads data from the HealthKit store.
     @available(*, renamed: "loadNewDataFromHealthKit()")
-    public func loadNewDataFromHealthKit( completionHandler: @escaping (Bool) -> Void = { _ in }) {
+    nonisolated public func loadNewDataFromHealthKit( completionHandler: @escaping (Bool) -> Void = { _ in }) {
         Task {
             completionHandler(await loadNewDataFromHealthKit())
         }
