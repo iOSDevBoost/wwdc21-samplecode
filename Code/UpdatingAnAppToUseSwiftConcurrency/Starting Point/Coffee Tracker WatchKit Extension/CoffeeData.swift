@@ -11,6 +11,10 @@ import os
 
 private let floatFormatter = FloatingPointFormatStyle<Double>().precision(.significantDigits(1...3))
 
+private actor CoffeeDataStore {
+    let logger = Logger(subsystem: "com.example.apple-samplecode.Coffee-Tracker.watchkitapp.watchkitextension.CoffeeData", category: "Model")
+}
+
 // The data model for the Coffee Tracker app.
 class CoffeeData: ObservableObject {
     
