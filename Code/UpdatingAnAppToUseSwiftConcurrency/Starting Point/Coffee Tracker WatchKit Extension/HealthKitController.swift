@@ -161,11 +161,9 @@ class HealthKitController {
             // Create a set of UUIDs for any samples deleted from HealthKit.
             let deletedDrinks = self.drinksToDelete(from: deletedSamples ?? [])
             
-            // Update the data on the main queue.
-            await MainActor.run {
-                // Update the model.
-                self.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
-            }
+            // Update the model.
+            await self.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
+
             return true
         } catch {
             self.logger.error("An error occurred while querying for samples: \(error.localizedDescription)")
@@ -245,6 +243,7 @@ class HealthKitController {
     }
     
     // Update the model.
+    @MainActor
     private func updateModel(newDrinks: [Drink], deletedDrinks: Set<UUID>) {
         assert(Thread.main == Thread.current, "Must be run on the main queue because it accesses currentDrinks.")
         
