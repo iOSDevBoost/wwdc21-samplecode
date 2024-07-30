@@ -156,16 +156,13 @@ class HealthKitController {
             self.anchor = newAnchor
             
             // Convert new caffeine samples into Drink instances.
-            var newDrinks: [Drink] = []
-            if let samples = samples {
-                newDrinks = self.drinksToAdd(from: samples)
-            }
+            let newDrinks = samples.flatMap { self.drinksToAdd(from:$0) } ?? []
             
             // Create a set of UUIDs for any samples deleted from HealthKit.
             let deletedDrinks = self.drinksToDelete(from: deletedSamples ?? [])
             
             // Update the data on the main queue.
-            await MainActor.run { [newDrinks] in
+            await MainActor.run {
                 // Update the model.
                 self.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
             }
