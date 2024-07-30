@@ -107,34 +107,50 @@ class HealthKitController {
     }
     
     // Reads data from the HealthKit store.
+    @available(*, renamed: "loadNewDataFromHealthKit()")
     public func loadNewDataFromHealthKit( completionHandler: @escaping (Bool) -> Void = { _ in }) {
-        
-        guard isAvailable else {
-            logger.debug("HealthKit is not available on this device.")
-            completionHandler(false)
-            return
+        Task {
+            completionHandler(await loadNewDataFromHealthKit())
         }
-        
-        logger.debug("Loading data from HealthKit")
-        
+    }
+    
+    private func queryHealthKit() async throws -> ([HKSample]?, [HKDeletedObject]?, HKQueryAnchor?) {
         // Create a predicate that only returns samples created within the last 24 hours.
         let endDate = Date()
         let startDate = endDate.addingTimeInterval(-24.0 * 60.0 * 60.0)
         let datePredicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: [.strictStartDate, .strictEndDate])
         
         // Create the query.
-        let query = HKAnchoredObjectQuery(
-            type: caffeineType,
-            predicate: datePredicate,
-            anchor: anchor,
-            limit: HKObjectQueryNoLimit) { (_, samples, deletedSamples, newAnchor, error) in
+        return await withCheckedThrowingContinuation { continuation in
+            let query = HKAnchoredObjectQuery(
+                type: caffeineType,
+                predicate: datePredicate,
+                anchor: anchor,
+                limit: HKObjectQueryNoLimit) { (_, samples, deletedSamples, newAnchor, error1) in
+                    
+                    // When the query ends, check for errors.
+                    if let error = error1 {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: (samples, deletedSamples, newAnchor))
+                    }
+                }
             
-            // When the query ends, check for errors.
-            if let error = error {
-                self.logger.error("An error occurred while querying for samples: \(error.localizedDescription)")
-                completionHandler(false)
-                return
-            }
+            store.execute(query)
+        }
+    }
+    @discardableResult
+    public func loadNewDataFromHealthKit() async -> Bool {
+        
+        guard isAvailable else {
+            logger.debug("HealthKit is not available on this device.")
+            return false
+        }
+        
+        logger.debug("Loading data from HealthKit")
+        
+        do {
+            let (samples, deletedSamples, newAnchor) = try await queryHealthKit()
             
             // Update the anchor.
             self.anchor = newAnchor
@@ -152,11 +168,12 @@ class HealthKitController {
             DispatchQueue.main.async {
                 // Update the model.
                 self.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
-                completionHandler(true)
+                continuation.resume(returning: true)
             }
+        } catch {
+            self.logger.error("An error occurred while querying for samples: \(error.localizedDescription)")
         }
-        
-        store.execute(query)
+    
     }
     
     // Save a drink to HealthKit as a caffeine sample.
