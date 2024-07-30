@@ -9,7 +9,7 @@ import SwiftUI
 import ClockKit
 import os
 
-private let floatFormatter = FloatingPointFormatStyle().precision(.significantDigits(1...3))
+private let floatFormatter = FloatingPointFormatStyle<Double>().precision(.significantDigits(1...3))
 
 // The data model for the Coffee Tracker app.
 class CoffeeData: ObservableObject {
