@@ -165,7 +165,7 @@ class HealthKitController {
             let deletedDrinks = self.drinksToDelete(from: deletedSamples ?? [])
             
             // Update the data on the main queue.
-            await MainActor.run {
+            await MainActor.run { [newDrinks] in
                 // Update the model.
                 self.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
             }
