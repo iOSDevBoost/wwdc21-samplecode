@@ -165,13 +165,14 @@ class HealthKitController {
             let deletedDrinks = self.drinksToDelete(from: deletedSamples ?? [])
             
             // Update the data on the main queue.
-            DispatchQueue.main.async {
+            await MainActor.run {
                 // Update the model.
                 self.updateModel(newDrinks: newDrinks, deletedDrinks: deletedDrinks)
-                continuation.resume(returning: true)
             }
+            return true
         } catch {
             self.logger.error("An error occurred while querying for samples: \(error.localizedDescription)")
+            return false
         }
     
     }
