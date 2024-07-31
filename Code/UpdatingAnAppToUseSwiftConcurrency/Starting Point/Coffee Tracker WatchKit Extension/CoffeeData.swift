@@ -66,9 +66,36 @@ private actor CoffeeDataStore {
             self.logger.error("An error occurred while saving the data: \(error.localizedDescription)")
         }
     }
+    
+    func load() -> [Drink] {
+        logger.debug("Loading the model.")
+    
+        var drinks: [Drink]
+        
+        do {
+            // Load the drink data from a binary plist file.
+            let data = try Data(contentsOf: self.dataURL)
+            
+            // Decode the data.
+            let decoder = PropertyListDecoder()
+            drinks = try decoder.decode([Drink].self, from: data)
+            logger.debug("Data loaded from disk")
+        } catch CocoaError.fileReadNoSuchFile {
+            logger.debug("No file found--creating an empty drink list.")
+            drinks = []
+        } catch {
+            fatalError("*** An unexpected error occurred while loading the drink list: \(error.localizedDescription) ***")
+        }
+
+        // Update the saved value.
+        savedValue = drinks
+        
+        return drinks
+    }
 }
 
 // The data model for the Coffee Tracker app.
+@MainActor
 class CoffeeData: ObservableObject {
     
     let logger = Logger(subsystem: "com.example.apple-samplecode.Coffee-Tracker.watchkitapp.watchkitextension.CoffeeData", category: "Model")
@@ -202,59 +229,31 @@ class CoffeeData: ObservableObject {
     private init() {
         
         // Begin loading the data from disk.
-        load()
+        Task { await load() }
     }
     
     // Begin loading the data from disk.
-    func load() {
-        // Read the data from a background queue.
-        background.async { [self] in
-            logger.debug("Loading the model.")
+    func load() async {
         
-            var drinks: [Drink]
-            
-            do {
-                // Load the drink data from a binary plist file.
-                let data = try Data(contentsOf: self.dataURL)
-                
-                // Decode the data.
-                let decoder = PropertyListDecoder()
-                drinks = try decoder.decode([Drink].self, from: data)
-                logger.debug("Data loaded from disk")
-            } catch CocoaError.fileReadNoSuchFile {
-                logger.debug("No file found--creating an empty drink list.")
-                drinks = []
-            } catch {
-                fatalError("*** An unexpected error occurred while loading the drink list: \(error.localizedDescription) ***")
-            }
-            
-            // Update the entires on the main queue.
-            DispatchQueue.main.async {
-                
-                // Update the saved value.
-                savedValue = drinks
-                
-                // Drop old drinks
-                drinks.removeOutdatedDrinks()
-                
-                // Assign loaded drinks to model
-                currentDrinks = drinks
-                
-                // Load new data from HealthKit.
-                self.healthKitController.requestAuthorization { (success) in
-                    guard success else {
-                        logger.debug("Unable to authorize HealthKit.")
-                        return
-                    }
-                    
-                    self.healthKitController.loadNewDataFromHealthKit()
-                }
-            }
+        var drinks = await store.load()
+        
+        // Drop old drinks
+        drinks.removeOutdatedDrinks()
+        
+        // Assign loaded drinks to model
+        currentDrinks = drinks
+        
+        // Load new data from HealthKit.
+        let success = await self.healthKitController.requestAuthorization()
+        guard success else {
+            logger.debug("Unable to authorize HealthKit.")
+            return
         }
+        
+        await self.healthKitController.loadNewDataFromHealthKit()
     }
     
     // Update the model.
-    @MainActor
     internal func updateModel(newDrinks: [Drink], deletedDrinks: Set<UUID>) async {
         assert(Thread.main == Thread.current, "Must be run on the main queue because it accesses currentDrinks.")
         
