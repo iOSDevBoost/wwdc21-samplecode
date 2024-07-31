@@ -31,7 +31,7 @@ class CoffeeData: ObservableObject {
     // The list of drinks consumed.
     // Because this is @Published property,
     // Combine notifies any observers when a change occurs.
-    @Published public var currentDrinks: [Drink] = [] {
+    @Published public private(set) var currentDrinks: [Drink] = [] {
         didSet {
             logger.debug("A value has been assigned to the current drinks property.")
             
