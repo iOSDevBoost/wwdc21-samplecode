@@ -31,8 +31,8 @@ class ExtensionDelegate: NSObject, WKExtensionDelegate {
                 // Check for updates from HealthKit.
                 let model = CoffeeData.shared
                 
-                model.healthKitController.loadNewDataFromHealthKit { success in
-                    
+                Task {
+                    let success = await model.healthKitController.loadNewDataFromHealthKit()
                     if success {
                         // Schedule the next background update.
                         scheduleBackgroundRefreshTasks()
